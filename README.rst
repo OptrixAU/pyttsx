@@ -4,10 +4,15 @@ pyttsx
 
 Cross-platform Python wrapper for text-to-speech synthesis
 
-Help Wanted
+This specific fork has been created to allow the the TTS data to be optionally saved to disk as a WAV file.
+
+If other file formats are required, additional libraries or executables (such as LAME or FFMPEG) can be used for format conversion and are outside the scope of this library.
+
+Status
 ===========
 
-As you can probably tell, I have not had time or in some cases the resources (e.g., specific versions of OSes) to maintain pyttsx very well for some time now. If you are using pyttsx in your day to day work and would like to take over as maintainer of the project, please let me know.
+At this point in time, file output works for Windows. Linux is coming soon, while unfortunately OSX will take some time without another contributor.
+
 
 Quickstart
 ==========
