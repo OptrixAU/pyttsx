@@ -39,7 +39,7 @@ class DriverProxy(object):
     @ivar _iterator: Driver iterator to invoke when in an external run loop
     @type _iterator: iterator
     '''
-    def __init__(self, engine, driverName, debug):
+    def __init__(self, engine, driverName, debug, mode):
         '''
         Constructor.
 
@@ -60,17 +60,20 @@ class DriverProxy(object):
             else:
                 driverName = 'espeak'
         # import driver module
+
+        self._mode = mode
+        
         name = 'drivers.%s' % driverName
         self._module = __import__(name, globals(), locals(), [driverName])
-        # build driver instance
-        self._driver = self._module.buildDriver(weakref.proxy(self))
+        # build driver instance        
+        self._driver = self._module.buildDriver(weakref.proxy(self))        
         # initialize refs
         self._engine = engine
         self._queue = []
         self._busy = True
         self._name = None
         self._iterator = None
-        self._debug = debug
+        self._debug = debug        
 
     def __del__(self):
         try:
@@ -101,6 +104,7 @@ class DriverProxy(object):
             cmd = self._queue.pop(0)
             self._name = cmd[2]
             try:
+                print "Calling " + cmd[0]
                 cmd[0](*cmd[1])
             except Exception, e:
                 self.notify('error', exception=e)
@@ -184,13 +188,13 @@ class DriverProxy(object):
         '''
         self._push(self._driver.setProperty, (name, value))
 
-    def runAndWait(self):
+    def runAndWait(self, outputfile=None):
         '''
         Called by the engine to start an event loop, process all commands in
         the queue at the start of the loop, and then exit the loop.
-        '''
+        '''        
         self._push(self._engine.endLoop, tuple())
-        self._driver.startLoop()
+        self._driver.startLoop()            
 
     def startLoop(self, useDriverLoop):
         '''
@@ -199,7 +203,7 @@ class DriverProxy(object):
         if useDriverLoop:
             self._driver.startLoop()
         else:
-            self._iterator = self._driver.iterate()
+            self._iterator = self._driver.iterate()    
 
     def endLoop(self, useDriverLoop):
         '''
@@ -212,6 +216,18 @@ class DriverProxy(object):
         else:
             self._iterator = None
         self.setBusy(True)
+
+        try:
+            self._driver.closeFile()
+        except:
+            pass
+        
+    def openFile(self,filename):
+        print str(dir(self))
+        self._driver.openFile(filename)        
+
+    def closeFile(self):
+        self._driver.closeFile()    
 
     def iterate(self):
         '''

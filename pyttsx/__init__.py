@@ -20,7 +20,7 @@ import weakref
 
 _activeEngines = weakref.WeakValueDictionary()
 
-def init(driverName=None, debug=False):
+def init(driverName=None, debug=False, mode=0):
     '''
     Constructs a new TTS engine instance or reuses the existing instance for
     the driver name.
@@ -36,6 +36,6 @@ def init(driverName=None, debug=False):
     try:
         eng = _activeEngines[driverName]
     except KeyError:
-        eng = Engine(driverName, debug)
+        eng = Engine(driverName, debug, mode=mode)
         _activeEngines[driverName] = eng
     return eng

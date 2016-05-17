@@ -66,12 +66,8 @@ class NSSpeechDriver(NSObject):
         self._tts.stopSpeaking()
 
     def _toVoice(self, attr):
-        try:
-            lang = attr['VoiceLocaleIdentifier']
-        except KeyError:
-            lang = attr['VoiceLanguage']
         return Voice(attr['VoiceIdentifier'], attr['VoiceName'],
-                     [lang], attr['VoiceGender'],
+                     [attr['VoiceLanguage']], attr['VoiceGender'],
                      attr['VoiceAge'])
 
     def getProperty(self, name):

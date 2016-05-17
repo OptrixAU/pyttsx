@@ -22,6 +22,7 @@ import time
 import math
 import weakref
 from ..voice import Voice
+import traceback
 
 # common voices
 MSSAM = 'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSSam'
@@ -54,6 +55,8 @@ class SAPI5Driver(object):
         # initial rate
         self._rateWpm = 200
         self.setProperty('voice', self.getProperty('voice'))
+        self.filestream = None
+        self.mode = proxy._mode        
 
     def destroy(self):
         self._tts.EventInterests = 0
@@ -79,6 +82,21 @@ class SAPI5Driver(object):
         for token in tokens:
             if token.Id == id: return token
         raise ValueError('unknown voice id %s', id)
+
+    def openFile(self,filename):
+        if self.filestream is not None:
+            self.closeFile()
+        print "Opening File..." + filename
+        self.filestream = win32com.client.Dispatch("SAPI.SpFileStream")
+        self.filestream.Format.Type = 26
+        self.filestream.Open(filename, 3)
+        self._tts.AudioOutputStream = self.filestream        
+
+    def closeFile(self):
+        self._tts.AudioOutputStream = None
+        if self.filestream is not None:
+            self.filestream.Close()
+            self.filestream = None
 
     def getProperty(self, name):
         if name == 'voices':
@@ -115,17 +133,29 @@ class SAPI5Driver(object):
             raise KeyError('unknown property %s' % name)
 
     def startLoop(self):
-        first = True
-        self._looping = True
-        while self._looping:
-            if first:
-                self._proxy.setBusy(False)
-                first = False
-            pythoncom.PumpWaitingMessages()
-            time.sleep(0.05)
+        if self.mode == 1:            
+            while len(self._proxy._queue):
+                cmd = self._proxy._queue.pop(0)                
+                try:                    
+                    cmd[0](*cmd[1])
+                    time.sleep(1)
+                except Exception, e:                                        
+                    traceback.print_exc()
+                
+        else:            
+            first = True
+            self._looping = True
+            while self._looping:
+                if first:
+                    self._proxy.setBusy(False)
+                    first = False
+                pythoncom.PumpWaitingMessages()
+                time.sleep(0.05)
 
     def endLoop(self):
         self._looping = False
+        if self.filestream is not None:
+            self.closeFile()
 
     def iterate(self):
         self._proxy.setBusy(False)

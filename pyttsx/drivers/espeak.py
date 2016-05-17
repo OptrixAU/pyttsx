@@ -20,18 +20,23 @@ import _espeak
 from ..voice import Voice
 import time
 
-def buildDriver(proxy):
+def buildDriver(proxy,playbackmode = 0):
     return EspeakDriver(proxy)
 
 class EspeakDriver(object):
     _moduleInitialized = False
     _defaultVoice = ''
-    def __init__(self, proxy):
+    def __init__(self, proxy,playbackmode = 0):
+        self.mode = playbackmode
+        self.filestream = None
         if not EspeakDriver._moduleInitialized:
             # espeak cannot initialize more than once per process and has
             # issues when terminating from python (assert error on close)
             # so just keep it alive and init once
-            rate = _espeak.Initialize(_espeak.AUDIO_OUTPUT_PLAYBACK, 1000)
+            if playbackmode == 0:
+                rate = _espeak.Initialize(_espeak.AUDIO_OUTPUT_PLAYBACK, 1000)
+            else:
+                rate = _espeak.Initialize(_espeak.AUDIO_OUTPUT_SYNCHRONOUS, 1000)
             if rate == -1:
                 raise RuntimeError('could not initialize espeak')
             EspeakDriver._defaultVoice = self.getProperty('voice')
@@ -132,18 +137,38 @@ class EspeakDriver(object):
                 self._proxy.setBusy(False)
             yield
 
+    def openFile(self,filename):
+        if self.filestream is not None:
+            self.closeFile()
+        print "Opening File..." + filename        
+        self.filestream = open(filename, 'wb')        
+
+    def closeFile(self):
+        if self.filestream != None:
+            self.filestream.flush()
+            self.filestream.close()
+            self.filestream = None
+
     def _onSynth(self, wav, numsamples, events):
-        i = 0
-        while True:
-            event = events[i]
-            if event.type == _espeak.EVENT_LIST_TERMINATED:
-                break
-            if event.type == _espeak.EVENT_WORD:
-                self._proxy.notify('started-word',
-                    location=event.text_position-1,
-                    length=event.length)
-            elif event.type == _espeak.EVENT_MSG_TERMINATED:
-                self._proxy.notify('finished-utterance', completed=True)
-                self._proxy.setBusy(False)
-            i += 1
-        return 0
+        if self.mode == 0:
+            i = 0        
+            while True:
+                event = events[i]
+                if event.type == _espeak.EVENT_LIST_TERMINATED:
+                    break
+                if event.type == _espeak.EVENT_WORD:
+                    self._proxy.notify('started-word',
+                        location=event.text_position-1,
+                        length=event.length)
+                elif event.type == _espeak.EVENT_MSG_TERMINATED:
+                    self._proxy.notify('finished-utterance', completed=True)
+                    self._proxy.setBusy(False)
+                i += 1
+            return 0
+        else:
+            if wav != None:
+                #Write Content to File...
+                print "Writing File Content"
+                if self.filestream != None:
+                    self.filestream.write(wav)
+                pass

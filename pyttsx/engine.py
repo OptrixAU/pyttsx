@@ -18,6 +18,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 import driver
 import traceback
 import weakref
+import traceback
 
 class Engine(object):
     '''
@@ -32,7 +33,7 @@ class Engine(object):
     @ivar _debug: Print exceptions or not
     @type _debug: bool
     '''
-    def __init__(self, driverName=None, debug=False):
+    def __init__(self, driverName=None, debug=False, mode=0):
         '''
         Constructs a new TTS engine instance.
 
@@ -41,13 +42,14 @@ class Engine(object):
         @type: str
         @param debug: Debugging output enabled or not
         @type debug: bool
-        '''
-        self.proxy = driver.DriverProxy(weakref.proxy(self), driverName, debug)
+        '''        
+        self.proxy = driver.DriverProxy(weakref.proxy(self), driverName, debug, mode)
         # initialize other vars
         self._connects = {}
         self._inLoop = False
         self._driverLoop = True
         self._debug = debug
+        self._mode = mode;
 
     def _notify(self, topic, **kwargs):
         '''
@@ -166,19 +168,19 @@ class Engine(object):
         '''
         self.proxy.setProperty(name, value)
 
-    def runAndWait(self):
+    def runAndWait(self, outputfile=None):
         '''
         Runs an event loop until all commands queued up until this method call
         complete. Blocks during the event loop and returns when the queue is
         cleared.
 
         @raise RuntimeError: When the loop is already running
-        '''
+        '''        
         if self._inLoop:
             raise RuntimeError('run loop already started')
         self._inLoop = True
-        self._driverLoop = True
-        self.proxy.runAndWait()
+        self._driverLoop = True        
+        self.proxy.runAndWait(outputfile)        
 
     def startLoop(self, useDriverLoop=True):
         '''
@@ -205,6 +207,14 @@ class Engine(object):
         if not self._inLoop:
             raise RuntimeError('run loop not started')
         self.proxy.endLoop(self._driverLoop)
+        self._inLoop = False
+
+    def openFile(self,strx):        
+        self.proxy.openFile(strx)
+        self._inLoop = False
+
+    def closeFile(self):        
+        self.proxy.closeFile()
         self._inLoop = False
 
     def iterate(self):
